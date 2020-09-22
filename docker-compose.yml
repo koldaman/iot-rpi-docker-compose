@@ -1,0 +1,65 @@
+version: "2"
+
+services:
+
+  mosquitto:
+    container_name: iot_mosquitto
+    build: ./mosquitto
+    user: 1000:1000
+    networks:
+      - iot
+    ports:
+      - "1883:1883"
+    volumes:
+      - /mnt/docker/mosquitto/data:/mosquitto/data
+      - /mnt/docker/mosquitto/config:/mosquitto/config
+      - /mnt/docker/mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+
+  nodered:
+    container_name: iot_nodered
+    build: ./nodered
+    networks:
+      - iot
+    ports:
+      - "1880:1880"
+    volumes:
+      - /mnt/docker/nodered/data:/data
+    restart: unless-stopped
+
+  influxdb:
+    container_name: iot_influxdb
+    image: "influxdb"
+    networks:
+      - iot
+    ports:
+      - "8086:8086"
+    volumes:
+      - /mnt/docker/influxdb/data:/data
+    environment:
+      - PRE_CREATE_DB="iot, speedtests"
+    restart: unless-stopped
+
+  grafana:
+    container_name: iot_grafana
+    image: "grafana/grafana"
+    user: 1000:1000
+    networks:
+      - iot
+    ports:
+      - "3000:3000"
+    volumes:
+      - /mnt/docker/grafana:/var/lib/grafana
+    restart: unless-stopped
+
+  speedtest:
+    container_name: speedtest
+    build: ./speedtest
+    networks:
+      - iot
+    environment:
+      - DELAY=900  # each 15 minutes
+    restart: unless-stopped
+
+networks:
+  iot:
