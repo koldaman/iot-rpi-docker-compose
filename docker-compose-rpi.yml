@@ -2,6 +2,26 @@ version: "2"
 
 services:
 
+  hassio:
+    image: homeassistant/armv7-hassio-supervisor
+    container_name: hassio_supervisor
+    privileged: true
+    restart: always
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    environment:
+      - HOMEASSISTANT_REPOSITORY=homeassistant/raspberrypi4-homeassistant
+      - SUPERVISOR_NAME=hassio_supervisor
+      - SUPERVISOR_SHARE=/sharedfolders/docker/hassio/data
+      - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /sharedfolders/docker//hassio/data:/data
+      - /sharedfolders/docker//hassio/scripts:/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      
   mosquitto:
     container_name: iot_mosquitto
     build: ./mosquitto
@@ -10,9 +30,9 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - /mnt/docker/mosquitto/data:/mosquitto/data 
-      - /mnt/docker/mosquitto/config:/mosquitto/config
-      - /mnt/docker/mosquitto/log:/mosquitto/log
+      - /sharedfolders/docker/mosquitto/data:/mosquitto/data 
+      - /sharedfolders/docker/mosquitto/config:/mosquitto/config
+      - /sharedfolders/docker/mosquitto/log:/mosquitto/log
     restart: unless-stopped
 
   nodered:
@@ -23,7 +43,7 @@ services:
     ports:
       - "1880:1880"
     volumes:
-      - /mnt/docker/nodered/data:/data 
+      - /sharedfolders/docker/nodered/data:/data 
     restart: unless-stopped
 
   influxdb:
@@ -34,20 +54,35 @@ services:
     ports:
       - "8086:8086"
     volumes:
-      - /mnt/docker/influxdb/data:/data 
+      - /sharedfolders/docker/influxdb/data:/data 
     environment:
       - PRE_CREATE_DB="iot, speedtests"
     restart: unless-stopped
 
+  chronograf:
+    image: arm32v7/chronograf:1.7.8
+    environment:
+      - influxdb-url=http://influxdb:8086
+    ports:
+      - "8888:8888"
+    networks:
+      - iot
+    volumes:
+      - /sharedfolders/docker/chronograf/data:/var/lib/chronograf 
+
   grafana:
     container_name: iot_grafana
     image: "grafana/grafana"
+    user: 1000:1000
     networks:
       - iot
     ports:
       - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_SECURITY_ALLOW_EMBEDDING=true
     volumes:
-      - /mnt/docker/grafana:/var/lib/grafana
+      - /sharedfolders/docker/grafana:/var/lib/grafana
     restart: unless-stopped
 
   speedtest:
